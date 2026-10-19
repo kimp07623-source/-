@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이상기체 법칙 인터랙티브 시뮬레이터 (Boyle & Charles)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Inter & Noto Sans KR Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+        }
+
+        .glass-card-hover {
+            transition: all 0.3s ease;
+        }
+        .glass-card-hover:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Custom Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 10px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 9999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.8);
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #818cf8;
+        }
+
+        #simCanvas {
+            touch-action: none;
+        }
+
+        /* Toast animation */
+        @keyframes toast-in {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-animate {
+            animation: toast-in 0.3s ease forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-indigo-500 selection:text-white">
+
+    <!-- TOP HEADER & NAVBAR -->
+    <header class="w-full glass-card border-b border-slate-700/50 sticky top-0 z-40 px-4 py-3 sm:px-8">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <!-- Logo & Title -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-atom text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white to-violet-300">
+                        이상기체 법칙 가상 실험실
+                    </h1>
+                    <p class="text-xs text-slate-400">보일 법칙 & 샤를 법칙 인터랙티브 시뮬레이션</p>
+                </div>
+            </div>
+
+            <!-- Tab Switcher & Share Button -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <div class="flex p-1 bg-slate-900/80 rounded-xl border border-slate-700/60 flex-1 sm:flex-initial">
+                    <button id="tabBoyle" onclick="switchTab('boyle')" class="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-md shadow-indigo-600/30">
+                        <i class="fa-solid fa-compress"></i>
+                        <span>보일 법칙</span>
+                    </button>
+                    <button id="tabCharles" onclick="switchTab('charles')" class="flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-1.5 text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-temperature-arrow-up"></i>
+                        <span>샤를 법칙</span>
+                    </button>
+                </div>
+
+                <!-- SHARE MODAL TRIGGER BUTTON -->
+                <button onclick="openShareModal()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 transition transform hover:scale-105 active:scale-95 shrink-0">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span class="hidden sm:inline">공유하기</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: CANVAS SIMULATOR & CONTROLS (7 Cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- Canvas Simulation Box -->
+            <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col relative overflow-hidden">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div id="modeTitleBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+                        보일 법칙 실험중: 온도(T) 고정
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                        <span class="inline-flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
+                            <i class="fa-solid fa-lock text-amber-400"></i> 일정 변수: <strong id="fixedVarText" class="text-slate-200">온도 T, 입자 수 n</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 2D Canvas Display -->
+                <div class="relative w-full aspect-[4/3] bg-slate-950/80 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center shadow-inner">
+                    <canvas id="simCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                    
+                    <div id="dragTooltip" class="absolute top-3 left-1/2 -translate-x-1/2 bg-slate-900/90 text-indigo-300 border border-indigo-500/40 px-3 py-1 rounded-full text-xs font-medium pointer-events-none shadow-lg flex items-center gap-1.5 transition-opacity duration-300">
+                        <i class="fa-solid fa-hand-pointer animate-bounce text-indigo-400"></i>
+                        <span>피스톤 손잡이를 드래그하여 부피를 조절해보세요!</span>
+                    </div>
+
+                    <div id="thermalVisual" class="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none transition-all duration-300 opacity-0 flex items-center justify-center gap-3 text-2xl">
+                    </div>
+                </div>
+
+                <!-- Quick Action Tool Buttons -->
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <button id="btnPlayPause" onclick="togglePause()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-pause text-amber-400" id="playIcon"></i>
+                            <span id="playText">일시정지</span>
+                        </button>
+                        <button onclick="resetSimulation()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-rotate-right text-indigo-400"></i>
+                            <span>초기화</span>
+                        </button>
+                    </div>
+
+                    <div id="presetButtons" class="flex items-center gap-1.5">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Slider Controls Card -->
+            <div class="glass-card rounded-2xl p-5 flex flex-col gap-5">
+                <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i>
+                    실험 변수 직접 조절
+                </h3>
+
+                <!-- Boyle Slider -->
+                <div id="boyleControlGroup" class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <label for="volumeSlider" class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-box text-cyan-400"></i>
+                            용기 부피 (V)
+                        </label>
+                        <span class="text-sm font-bold text-cyan-400 font-mono" id="volumeValText">2.50 L</span>
+                    </div>
+                    <input type="range" id="volumeSlider" min="1.0" max="5.0" step="0.05" value="2.50" oninput="onVolumeChange(this.value)">
+                    <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                        <span>1.0 L (고압력/고밀도)</span>
+                        <span>3.0 L</span>
+                        <span>5.0 L (저압력/저밀도)</span>
+                    </div>
+                </div>
+
+                <!-- Charles Slider -->
+                <div id="charlesControlGroup" class="flex flex-col gap-2 hidden">
+                    <div class="flex items-center justify-between">
+                        <label for="tempSlider" class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-temperature-high text-rose-400"></i>
+                            기체 온도 (T)
+                        </label>
+                        <div class="text-right">
+                            <span class="text-sm font-bold text-rose-400 font-mono" id="tempCelsiusText">26.85 ℃</span>
+                            <span class="text-xs text-slate-400 font-mono ml-1.5" id="tempKelvinText">(300.00 K)</span>
+                        </div>
+                    </div>
+                    <input type="range" id="tempSlider" min="-100" max="300" step="1" value="26.85" oninput="onTempChange(this.value)">
+                    <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                        <span>-100 ℃ (173 K: 저온/수축)</span>
+                        <span>27 ℃ (300 K)</span>
+                        <span>300 ℃ (573 K: 고온/팽창)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Principle Card -->
+            <div class="glass-card rounded-2xl p-5 border-l-4 border-l-indigo-500">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <span class="text-[11px] font-bold tracking-wider uppercase text-indigo-400" id="lawSubTag">보일의 법칙 (Boyle's Law)</span>
+                        <h4 class="text-base font-bold text-white mt-0.5" id="lawHeading">온도가 일정할 때 부피와 압력은 반비례합니다</h4>
+                    </div>
+                    <div class="bg-indigo-950/80 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-center shadow-inner shrink-0">
+                        <span class="text-[10px] text-slate-400 block font-semibold">핵심 수식</span>
+                        <span class="text-sm font-extrabold text-indigo-300 font-mono" id="formulaText">P₁V₁ = P₂V₂</span>
+                    </div>
+                </div>
+
+                <p class="text-xs text-slate-300 mt-3 leading-relaxed" id="lawDescription">
+                    온도와 기체 입자 수가 일정할 때, 용기의 부피를 줄이면 입자들이 벽면에 충돌하는 횟수가 증가하여 압력이 높아집니다. 반대로 부피를 늘리면 충돌 횟수가 줄어들어 압력이 낮아집니다.
+                </p>
+
+                <div class="mt-3 p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
+                    <i class="fa-solid fa-lightbulb text-amber-400 text-sm"></i>
+                    <span id="lawTipText">피스톤을 직접 위아래로 끌어당기며 입자가 벽에 부딪히는 빈도 변화를 관찰해보세요!</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT COLUMN: DASHBOARD & LIVE GRAPH (5 Cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+
+            <!-- Real-time Values Cards Grid -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold">
+                        <span>압력 (P)</span>
+                        <i class="fa-solid fa-gauge-high text-amber-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-2xl font-black text-amber-300 font-mono tracking-tight" id="dispPressureAtm">1.00 <span class="text-xs font-normal text-slate-400">atm</span></div>
+                        <div class="text-[11px] text-slate-400 font-mono mt-0.5" id="dispPressureKpa">101.3 kPa</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+                        <div id="barPressure" class="bg-amber-400 h-1.5 rounded-full transition-all duration-200" style="width: 33%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold">
+                        <span>부피 (V)</span>
+                        <i class="fa-solid fa-box-archive text-cyan-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-2xl font-black text-cyan-300 font-mono tracking-tight" id="dispVolume">2.50 <span class="text-xs font-normal text-slate-400">L</span></div>
+                        <div class="text-[11px] text-slate-400 font-mono mt-0.5">상대 비율 100%</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+                        <div id="barVolume" class="bg-cyan-400 h-1.5 rounded-full transition-all duration-200" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold">
+                        <span>온도 (T)</span>
+                        <i class="fa-solid fa-temperature-quarter text-rose-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-2xl font-black text-rose-300 font-mono tracking-tight" id="dispTempK">300.0 <span class="text-xs font-normal text-slate-400">K</span></div>
+                        <div class="text-[11px] text-slate-400 font-mono mt-0.5" id="dispTempC">26.85 ℃</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+                        <div id="barTemp" class="bg-rose-400 h-1.5 rounded-full transition-all duration-200" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold">
+                        <span>평균 속도 (v)</span>
+                        <i class="fa-solid fa-bolt text-emerald-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-2xl font-black text-emerald-300 font-mono tracking-tight" id="dispSpeed">500 <span class="text-xs font-normal text-slate-400">m/s</span></div>
+                        <div class="text-[11px] text-slate-400 font-mono mt-0.5">속도 ∝ √T</div>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+                        <div id="barSpeed" class="bg-emerald-400 h-1.5 rounded-full transition-all duration-200" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Chart Card -->
+            <div class="glass-card rounded-2xl p-5 flex flex-col flex-grow">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-indigo-400"></i>
+                        <span id="graphTitle">실시간 P-V 관계 그래프</span>
+                    </h3>
+                    <span class="text-[10px] font-mono bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30">
+                        ● 현재 상태점
+                    </span>
+                </div>
+
+                <div class="relative w-full flex-grow min-h-[260px] bg-slate-950/50 rounded-xl p-2 border border-slate-800/80">
+                    <canvas id="liveChart"></canvas>
+                </div>
+
+                <div class="mt-3 text-[11px] text-slate-400 leading-tight" id="graphDescription">
+                    * 곡선 상의 빨간색 점은 현재 기체의 상태를 나타내며, 슬라이더나 피스톤을 조절하면 곡선을 따라 실시간으로 움직입니다.
+                </div>
+            </div>
+
+            <!-- Ideal Gas Law Complete Formula -->
+            <div class="glass-card rounded-2xl p-4 text-xs text-slate-400 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-square-root-variable text-indigo-400 text-lg"></i>
+                    <span>상태 방정식: <strong class="text-slate-200 font-mono">P · V = n · R · T</strong></span>
+                </div>
+                <button onclick="copyDataReport()" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2.5 py-1 rounded border border-slate-700 transition flex items-center gap-1">
+                    <i class="fa-solid fa-copy"></i>
+                    <span>결과 복사</span>
+                </button>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full border-t border-slate-800 bg-slate-950/80 py-4 px-6 text-center text-xs text-slate-500">
+        <p>인터랙티브 과학 교육 시뮬레이션 — 보일의 법칙 & 샤를의 법칙</p>
+    </footer>
+
+    <!-- SHARE & EXPORT MODAL -->
+    <div id="shareModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-card w-full max-w-md rounded-2xl p-6 border border-slate-700 shadow-2xl relative flex flex-col gap-5">
+            <!-- Close Button -->
+            <button onclick="closeShareModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div>
+                <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-share-nodes text-emerald-400"></i>
+                    시뮬레이터 공유 및 파일 저장
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">
+                    스마트폰으로 QR 코드를 스캔하거나, 파일/웹 링크를 복사하여 전달하세요.
+                </p>
+            </div>
+
+            <!-- QR Code Section -->
+            <div class="flex flex-col items-center justify-center bg-slate-900/90 rounded-xl p-4 border border-slate-800">
+                <div id="qrcode" class="p-2 bg-white rounded-lg shadow-md"></div>
+                <span class="text-[11px] text-slate-400 mt-2.5">카메라로 스캔하여 모바일에서 바로 실행</span>
+            </div>
+
+            <!-- Action Buttons Grid -->
+            <div class="grid grid-cols-1 gap-2.5">
+                <button onclick="copyCurrentURL()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-md">
+                    <i class="fa-solid fa-link"></i>
+                    <span>현재 웹페이지 링크 복사</span>
+                </button>
+
+                <button onclick="downloadHTMLFile()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-arrow-down text-cyan-400"></i>
+                    <span>시뮬레이터 HTML 파일 바로 다운로드</span>
+                </button>
+
+                <button onclick="copyDataReport()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-clipboard-list text-amber-400"></i>
+                    <span>현재 실험 결과 데이터 텍스트 복사</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-2xl z-50 pointer-events-none opacity-0 transition-opacity duration-300 flex items-center gap-2 border border-indigo-400/30">
+        <i class="fa-solid fa-circle-check text-emerald-300"></i>
+        <span id="toastMsg">클립보드에 복사되었습니다!</span>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const R = 0.08206;
+        const N_PARTICLES = 50;
+        
+        let currentLaw = 'boyle';
+        let isPaused = false;
+
+        let state = {
+            V: 2.50,
+            T_C: 26.85,
+            T_K: 300.00,
+            P_atm: 1.00,
+            P_kPa: 101.325,
+            speedFactor: 1.0
+        };
+
+        let simCanvas, ctx;
+        let chartInstance = null;
+        let particles = [];
+
+        let isDraggingPiston = false;
+        let containerBounds = { x: 0, y: 0, width: 0, height: 0, maxH: 0, minH: 0 };
+        let wallCollisions = [];
+        let qrCodeObj = null;
+
+        window.onload = function() {
+            simCanvas = document.getElementById('simCanvas');
+            ctx = simCanvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                initParticlesPosition();
+            });
+
+            initParticles();
+            setupCanvasInteraction();
+            initChart();
+
+            updateStateFromVariables();
+            updateUI();
+            setupPresetButtons();
+
+            requestAnimationFrame(animLoop);
+        };
+
+        function resizeCanvas() {
+            const rect = simCanvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            simCanvas.width = rect.width * dpr;
+            simCanvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < N_PARTICLES; i++) {
+                particles.push({
+                    x: 0, y: 0,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    radius: 5
+                });
+            }
+            initParticlesPosition();
+        }
+
+        function initParticlesPosition() {
+            const rect = simCanvas.getBoundingClientRect();
+            const cWidth = rect.width;
+            const cHeight = rect.height;
+
+            const paddingX = cWidth * 0.18;
+            const boxW = cWidth - (paddingX * 2);
+            const maxBoxH = cHeight * 0.72;
+            const bottomY = cHeight * 0.88;
+
+            const boxH = (state.V / 5.0) * maxBoxH;
+            const topY = bottomY - boxH;
+
+            containerBounds = {
+                x: paddingX,
+                y: topY,
+                width: boxW,
+                height: boxH,
+                bottom: bottomY,
+                maxH: maxBoxH,
+                minH: (1.0 / 5.0) * maxBoxH
+            };
+
+            particles.forEach(p => {
+                p.x = containerBounds.x + p.radius + Math.random() * (containerBounds.width - p.radius * 2);
+                p.y = containerBounds.y + p.radius + Math.random() * (containerBounds.height - p.radius * 2);
+            });
+        }
+
+        function updateStateFromVariables() {
+            if (currentLaw === 'boyle') {
+                state.T_K = 300.00;
+                state.T_C = 26.85;
+                state.P_atm = 2.50 / state.V;
+            } else {
+                state.T_K = state.T_C + 273.15;
+                state.V = 2.50 * (state.T_K / 300.00);
+                state.P_atm = 1.00;
+            }
+
+            state.P_kPa = state.P_atm * 101.325;
+            state.speedFactor = Math.sqrt(state.T_K / 300.00);
+        }
+
+        function switchTab(law) {
+            currentLaw = law;
+            const btnBoyle = document.getElementById('tabBoyle');
+            const btnCharles = document.getElementById('tabCharles');
+            const boyleControls = document.getElementById('boyleControlGroup');
+            const charlesControls = document.getElementById('charlesControlGroup');
+
+            if (law === 'boyle') {
+                btnBoyle.className = "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-md shadow-indigo-600/30";
+                btnCharles.className = "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-1.5 text-slate-400 hover:text-white";
+                boyleControls.classList.remove('hidden');
+                charlesControls.classList.add('hidden');
+
+                document.getElementById('modeTitleBadge').innerHTML = `<span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span> 보일 법칙 실험중: 온도(T) 고정`;
+                document.getElementById('fixedVarText').innerText = "온도 T (300K), 입자 수 n";
+                document.getElementById('lawSubTag').innerText = "보일의 법칙 (Boyle's Law)";
+                document.getElementById('lawHeading').innerText = "온도가 일정할 때 부피와 압력은 반비례합니다";
+                document.getElementById('formulaText').innerText = "P₁V₁ = P₂V₂";
+                document.getElementById('lawDescription').innerText = "온도와 기체 입자 수가 일정할 때, 용기의 부피를 줄이면 입자들이 벽면에 충돌하는 횟수가 증가하여 압력이 높아집니다. 반대로 부피를 늘리면 충돌 횟수가 줄어들어 압력이 낮아집니다.";
+                document.getElementById('lawTipText').innerText = "피스톤 손잡이를 드래그하거나 부피 슬라이더를 조작해 압력의 변화를 확인해보세요!";
+                document.getElementById('graphTitle').innerText = "실시간 P-V 반비례 곡선 그래프";
+                
+                state.V = 2.50;
+                document.getElementById('volumeSlider').value = 2.50;
+            } else {
+                btnCharles.className = "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-md shadow-indigo-600/30";
+                btnBoyle.className = "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-1.5 text-slate-400 hover:text-white";
+                boyleControls.classList.add('hidden');
+                charlesControls.classList.remove('hidden');
+
+                document.getElementById('modeTitleBadge').innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span> 샤를 법칙 실험중: 압력(P) 고정`;
+                document.getElementById('fixedVarText').innerText = "압력 P (1.0atm), 입자 수 n";
+                document.getElementById('lawSubTag').innerText = "샤를의 법칙 (Charles's Law)";
+                document.getElementById('lawHeading').innerText = "압력이 일정할 때 온도와 부피는 정비례합니다";
+                document.getElementById('formulaText').innerText = "V₁ / T₁ = V₂ / T₂";
+                document.getElementById('lawDescription').innerText = "압력이 일정할 때 온도가 상승하면 기체 입자의 운동 속도가 증가하여 벽을 더 강하게 밉니다. 이에 따라 피스톤이 밀려나 부피(V)가 크게 증가합니다.";
+                document.getElementById('lawTipText').innerText = "온도 슬라이더를 올려 입자의 빠른 운동과 그에 따른 부피 팽창을 관찰해보세요!";
+                document.getElementById('graphTitle').innerText = "실시간 V-T 정비례 직선 그래프";
+
+                state.T_C = 26.85;
+                document.getElementById('tempSlider').value = 26.85;
+            }
+
+            setupPresetButtons();
+            updateStateFromVariables();
+            updateUI();
+            updateChartConfig();
+        }
+
+        function onVolumeChange(val) {
+            state.V = parseFloat(val);
+            updateStateFromVariables();
+            updateUI();
+        }
+
+        function onTempChange(val) {
+            state.T_C = parseFloat(val);
+            updateStateFromVariables();
+            updateUI();
+        }
+
+        function setupPresetButtons() {
+            const container = document.getElementById('presetButtons');
+            if (currentLaw === 'boyle') {
+                container.innerHTML = `
+                    <button onclick="setVolumePreset(1.0)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-cyan-300 border border-slate-700">1.0L</button>
+                    <button onclick="setVolumePreset(2.5)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-cyan-300 border border-slate-700">2.5L</button>
+                    <button onclick="setVolumePreset(5.0)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-cyan-300 border border-slate-700">5.0L</button>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="setTempPreset(-100)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-rose-300 border border-slate-700">-100℃</button>
+                    <button onclick="setTempPreset(27)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-rose-300 border border-slate-700">27℃</button>
+                    <button onclick="setTempPreset(250)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-mono text-rose-300 border border-slate-700">250℃</button>
+                `;
+            }
+        }
+
+        function setVolumePreset(v) {
+            document.getElementById('volumeSlider').value = v;
+            onVolumeChange(v);
+        }
+
+        function setTempPreset(t) {
+            document.getElementById('tempSlider').value = t;
+            onTempChange(t);
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            document.getElementById('playIcon').className = isPaused ? "fa-solid fa-play text-emerald-400" : "fa-solid fa-pause text-amber-400";
+            document.getElementById('playText').innerText = isPaused ? "재생" : "일시정지";
+        }
+
+        function resetSimulation() {
+            if (currentLaw === 'boyle') {
+                setVolumePreset(2.50);
+            } else {
+                setTempPreset(26.85);
+            }
+            isPaused = false;
+            document.getElementById('playIcon').className = "fa-solid fa-pause text-amber-400";
+            document.getElementById('playText').innerText = "일시정지";
+            initParticles();
+        }
+
+        function updateUI() {
+            document.getElementById('volumeValText').innerText = state.V.toFixed(2) + " L";
+            document.getElementById('tempCelsiusText').innerText = state.T_C.toFixed(2) + " ℃";
+            document.getElementById('tempKelvinText').innerText = "(" + state.T_K.toFixed(2) + " K)";
+
+            document.getElementById('dispPressureAtm').innerHTML = `${state.P_atm.toFixed(2)} <span class="text-xs font-normal text-slate-400">atm</span>`;
+            document.getElementById('dispPressureKpa').innerText = `${state.P_kPa.toFixed(1)} kPa`;
+
+            document.getElementById('dispVolume').innerHTML = `${state.V.toFixed(2)} <span class="text-xs font-normal text-slate-400">L</span>`;
+
+            document.getElementById('dispTempK').innerHTML = `${state.T_K.toFixed(1)} <span class="text-xs font-normal text-slate-400">K</span>`;
+            document.getElementById('dispTempC').innerText = `${state.T_C.toFixed(1)} ℃`;
+
+            const approxSpeed = Math.round(500 * state.speedFactor);
+            document.getElementById('dispSpeed').innerHTML = `${approxSpeed} <span class="text-xs font-normal text-slate-400">m/s</span>`;
+
+            document.getElementById('barPressure').style.width = Math.min(100, (state.P_atm / 3.0) * 100) + "%";
+            document.getElementById('barVolume').style.width = ((state.V - 1.0) / 4.0) * 100 + "%";
+            document.getElementById('barTemp').style.width = ((state.T_K - 173.15) / 400) * 100 + "%";
+            document.getElementById('barSpeed').style.width = Math.min(100, (approxSpeed / 800) * 100) + "%";
+
+            const thermalDiv = document.getElementById('thermalVisual');
+            if (currentLaw === 'charles') {
+                thermalDiv.style.opacity = "1";
+                if (state.T_C > 50) {
+                    thermalDiv.innerHTML = `<i class="fa-solid fa-fire text-amber-500 animate-bounce"></i><i class="fa-solid fa-fire text-rose-500 animate-pulse"></i><i class="fa-solid fa-fire text-amber-500 animate-bounce"></i>`;
+                } else if (state.T_C < -20) {
+                    thermalDiv.innerHTML = `<i class="fa-solid fa-snowflake text-cyan-300 animate-spin"></i><i class="fa-solid fa-snowflake text-blue-400"></i><i class="fa-solid fa-snowflake text-cyan-300 animate-spin"></i>`;
+                } else {
+                    thermalDiv.innerHTML = `<span class="text-xs text-slate-500 font-mono">상온 (27℃)</span>`;
+                }
+            } else {
+                thermalDiv.style.opacity = "0";
+            }
+
+            updateChartData();
+        }
+
+        function setupCanvasInteraction() {
+            const handleStart = (clientX, clientY) => {
+                const rect = simCanvas.getBoundingClientRect();
+                const y = clientY - rect.top;
+                const x = clientX - rect.left;
+
+                if (x >= containerBounds.x - 20 && x <= containerBounds.x + containerBounds.width + 20) {
+                    if (Math.abs(y - containerBounds.y) < 35) {
+                        isDraggingPiston = true;
+                        document.getElementById('dragTooltip').style.opacity = '0';
+                    }
+                }
+            };
+
+            const handleMove = (clientY) => {
+                if (!isDraggingPiston) return;
+                const rect = simCanvas.getBoundingClientRect();
+                const mouseCanvasY = clientY - rect.top;
+
+                let newH = containerBounds.bottom - mouseCanvasY;
+                newH = Math.max(containerBounds.minH, Math.min(containerBounds.maxH, newH));
+
+                const newV = (newH / containerBounds.maxH) * 5.0;
+
+                if (currentLaw === 'boyle') {
+                    setVolumePreset(newV.toFixed(2));
+                } else {
+                    const newTK = (newV / 2.5) * 300;
+                    const newTC = newTK - 273.15;
+                    setTempPreset(Math.max(-100, Math.min(300, newTC)));
+                }
+            };
+
+            const handleEnd = () => { isDraggingPiston = false; };
+
+            simCanvas.addEventListener('mousedown', (e) => handleStart(e.clientX, e.clientY));
+            window.addEventListener('mousemove', (e) => handleMove(e.clientY));
+            window.addEventListener('mouseup', handleEnd);
+
+            simCanvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0) handleStart(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) handleMove(e.touches[0].clientY);
+            }, { passive: true });
+
+            window.addEventListener('touchend', handleEnd);
+        }
+
+        function animLoop() {
+            renderSimulation();
+            requestAnimationFrame(animLoop);
+        }
+
+        function renderSimulation() {
+            const rect = simCanvas.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const paddingX = width * 0.18;
+            const boxW = width - (paddingX * 2);
+            const maxBoxH = height * 0.72;
+            const bottomY = height * 0.88;
+
+            const targetBoxH = (state.V / 5.0) * maxBoxH;
+            
+            containerBounds.height += (targetBoxH - containerBounds.height) * 0.3;
+            containerBounds.y = bottomY - containerBounds.height;
+            containerBounds.x = paddingX;
+            containerBounds.width = boxW;
+            containerBounds.bottom = bottomY;
+
+            const cX = containerBounds.x;
+            const cY = containerBounds.y;
+            const cW = containerBounds.width;
+            const cH = containerBounds.height;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+            ctx.fillRect(cX, cY, cW, cH);
+
+            const glassGrad = ctx.createLinearGradient(cX, cY, cX + cW, cY);
+            glassGrad.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+            glassGrad.addColorStop(0.1, 'rgba(255, 255, 255, 0.03)');
+            glassGrad.addColorStop(0.9, 'rgba(255, 255, 255, 0.03)');
+            glassGrad.addColorStop(1, 'rgba(255, 255, 255, 0.12)');
+            ctx.fillStyle = glassGrad;
+            ctx.fillRect(cX, cY, cW, cH);
+
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(cX, cY - 15);
+            ctx.lineTo(cX, cY + cH);
+            ctx.lineTo(cX + cW, cY + cH);
+            ctx.lineTo(cX + cW, cY - 15);
+            ctx.stroke();
+
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(cX - 10, cY + cH, cW + 20, 10);
+            ctx.restore();
+
+            if (!isPaused) updateParticlesPhysics();
+
+            drawParticles();
+            drawShockwaves();
+            drawPiston(cX, cY, cW);
+            drawPressureGauge(cX + cW + 10, cY + cH * 0.5);
+        }
+
+        function updateParticlesPhysics() {
+            const speed = state.speedFactor;
+            const cX = containerBounds.x;
+            const cY = containerBounds.y;
+            const cW = containerBounds.width;
+            const cH = containerBounds.height;
+            const cBottom = containerBounds.bottom;
+
+            particles.forEach((p) => {
+                p.x += p.vx * speed;
+                p.y += p.vy * speed;
+
+                if (p.x - p.radius < cX) {
+                    p.x = cX + p.radius;
+                    p.vx *= -1;
+                    addShockwave(p.x, p.y);
+                } else if (p.x + p.radius > cX + cW) {
+                    p.x = cX + cW - p.radius;
+                    p.vx *= -1;
+                    addShockwave(p.x, p.y);
+                }
+
+                if (p.y + p.radius > cBottom) {
+                    p.y = cBottom - p.radius;
+                    p.vy *= -1;
+                    addShockwave(p.x, p.y);
+                }
+
+                if (p.y - p.radius < cY) {
+                    p.y = cY + p.radius;
+                    p.vy = Math.abs(p.vy);
+                    addShockwave(p.x, p.y);
+                }
+            });
+
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p1 = particles[i];
+                    const p2 = particles[j];
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const minDist = p1.radius + p2.radius;
+
+                    if (dist < minDist && dist > 0) {
+                        const angle = Math.atan2(dy, dx);
+                        const sin = Math.sin(angle);
+                        const cos = Math.cos(angle);
+
+                        let vx1 = p1.vx * cos + p1.vy * sin;
+                        let vy1 = p1.vy * cos - p1.vx * sin;
+                        let vx2 = p2.vx * cos + p2.vy * sin;
+                        let vy2 = p2.vy * cos - p2.vx * sin;
+
+                        const tempVx = vx1;
+                        vx1 = vx2;
+                        vx2 = tempVx;
+
+                        const overlap = minDist - dist;
+                        p1.x -= (overlap / 2) * cos;
+                        p1.y -= (overlap / 2) * sin;
+                        p2.x += (overlap / 2) * cos;
+                        p2.y += (overlap / 2) * sin;
+
+                        p1.vx = vx1 * cos - vy1 * sin;
+                        p1.vy = vy1 * cos + vx1 * sin;
+                        p2.vx = vx2 * cos - vy2 * sin;
+                        p2.vy = vy2 * cos + vx2 * sin;
+                    }
+                }
+            }
+        }
+
+        function drawParticles() {
+            let color = '#818cf8';
+            if (state.T_C > 80) color = '#f87171';
+            else if (state.T_C < 0) color = '#38bdf8';
+
+            particles.forEach(p => {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 8;
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(p.x - 1.5, p.y - 1.5, p.radius * 0.35, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function addShockwave(x, y) {
+            if (wallCollisions.length < 15) {
+                wallCollisions.push({ x, y, radius: 2, alpha: 0.8 });
+            }
+        }
+
+        function drawShockwaves() {
+            for (let i = wallCollisions.length - 1; i >= 0; i--) {
+                const wave = wallCollisions[i];
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(245, 158, 11, ${wave.alpha})`;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.restore();
+
+                wave.radius += 1.2;
+                wave.alpha -= 0.08;
+
+                if (wave.alpha <= 0) {
+                    wallCollisions.splice(i, 1);
+                }
+            }
+        }
+
+        function drawPiston(cX, cY, cW) {
+            ctx.save();
+            const pistonH = 16;
+            const pGrad = ctx.createLinearGradient(cX, cY - pistonH, cX, cY);
+            pGrad.addColorStop(0, '#94a3b8');
+            pGrad.addColorStop(0.5, '#cbd5e1');
+            pGrad.addColorStop(1, '#64748b');
+
+            ctx.fillStyle = pGrad;
+            ctx.fillRect(cX + 2, cY - pistonH, cW - 4, pistonH);
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(cX + 2, cY - pistonH + 4, 6, 8);
+            ctx.fillRect(cX + cW - 8, cY - pistonH + 4, 6, 8);
+
+            const rodW = 12;
+            const rodX = cX + cW / 2 - rodW / 2;
+            const rodGrad = ctx.createLinearGradient(rodX, 0, rodX + rodW, 0);
+            rodGrad.addColorStop(0, '#64748b');
+            rodGrad.addColorStop(0.5, '#f1f5f9');
+            rodGrad.addColorStop(1, '#475569');
+
+            ctx.fillStyle = rodGrad;
+            ctx.fillRect(rodX, cY - pistonH - 45, rodW, 45);
+
+            const handleW = 60;
+            const handleX = cX + cW / 2 - handleW / 2;
+            const handleY = cY - pistonH - 52;
+
+            ctx.fillStyle = isDraggingPiston ? '#818cf8' : '#6366f1';
+            ctx.shadowColor = '#6366f1';
+            ctx.shadowBlur = isDraggingPiston ? 15 : 6;
+            ctx.beginPath();
+            ctx.roundRect(handleX, handleY, handleW, 12, 6);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(handleX + handleW / 2 - 8, handleY + 4, 3, 4);
+            ctx.fillRect(handleX + handleW / 2 - 1, handleY + 4, 3, 4);
+            ctx.fillRect(handleX + handleW / 2 + 6, handleY + 4, 3, 4);
+
+            ctx.restore();
+        }
+
+        function drawPressureGauge(gx, gy) {
+            ctx.save();
+            const gRadius = 22;
+
+            ctx.beginPath();
+            ctx.arc(gx, gy, gRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#0f172a';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2.5;
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1;
+            for (let a = -Math.PI * 0.75; a <= Math.PI * 0.75; a += Math.PI * 0.3) {
+                const tx1 = gx + Math.cos(a) * (gRadius - 4);
+                const ty1 = gy + Math.sin(a) * (gRadius - 4);
+                const tx2 = gx + Math.cos(a) * (gRadius - 8);
+                const ty2 = gy + Math.sin(a) * (gRadius - 8);
+                ctx.beginPath();
+                ctx.moveTo(tx1, ty1);
+                ctx.lineTo(tx2, ty2);
+                ctx.stroke();
+            }
+
+            const pRatio = Math.min(1.0, state.P_atm / 3.0);
+            const needleAngle = -Math.PI * 0.75 + pRatio * (Math.PI * 1.5);
+
+            ctx.beginPath();
+            ctx.moveTo(gx, gy);
+            ctx.lineTo(gx + Math.cos(needleAngle) * (gRadius - 5), gy + Math.sin(needleAngle) * (gRadius - 5));
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(gx, gy, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#f59e0b';
+            ctx.fill();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('P', gx, gy + 14);
+
+            ctx.restore();
+        }
+
+        function initChart() {
+            const chartCtx = document.getElementById('liveChart').getContext('2d');
+
+            chartInstance = new Chart(chartCtx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: '이론 법칙 곡선',
+                            data: [],
+                            borderColor: '#6366f1',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0
+                        },
+                        {
+                            label: '샤를 법칙 연장선 (절대영도)',
+                            data: [],
+                            borderColor: '#94a3b8',
+                            borderWidth: 1.5,
+                            borderDash: [4, 4],
+                            fill: false,
+                            pointRadius: 0
+                        },
+                        {
+                            label: '현재 상태점',
+                            data: [],
+                            backgroundColor: '#ef4444',
+                            borderColor: '#ffffff',
+                            borderWidth: 2,
+                            pointRadius: 7,
+                            pointHoverRadius: 9
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (currentLaw === 'boyle') {
+                                        return `부피: ${context.parsed.x} L, 압력: ${context.parsed.y} atm`;
+                                    } else {
+                                        return `온도: ${context.parsed.x} K, 부피: ${context.parsed.y} L`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: '부피 V (L)', color: '#94a3b8', font: { size: 11 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: { display: true, text: '압력 P (atm)', color: '#94a3b8', font: { size: 11 } },
+                            grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            updateChartConfig();
+        }
+
+        function updateChartConfig() {
+            if (!chartInstance) return;
+
+            if (currentLaw === 'boyle') {
+                chartInstance.options.scales.x.title.text = '부피 V (L)';
+                chartInstance.options.scales.x.min = 0.5;
+                chartInstance.options.scales.x.max = 5.5;
+
+                chartInstance.options.scales.y.title.text = '압력 P (atm)';
+                chartInstance.options.scales.y.min = 0.0;
+                chartInstance.options.scales.y.max = 3.0;
+
+                const curveData = [];
+                for (let v = 0.8; v <= 5.2; v += 0.1) {
+                    curveData.push({ x: parseFloat(v.toFixed(2)), y: parseFloat((2.5 / v).toFixed(2)) });
+                }
+                chartInstance.data.datasets[0].data = curveData;
+                chartInstance.data.datasets[1].data = [];
+            } else {
+                chartInstance.options.scales.x.title.text = '절대온도 T (K)';
+                chartInstance.options.scales.x.min = 0;
+                chartInstance.options.scales.x.max = 600;
+
+                chartInstance.options.scales.y.title.text = '부피 V (L)';
+                chartInstance.options.scales.y.min = 0.0;
+                chartInstance.options.scales.y.max = 5.5;
+
+                const lineData = [];
+                for (let t = 173; t <= 580; t += 10) {
+                    lineData.push({ x: t, y: parseFloat(((2.5 / 300) * t).toFixed(2)) });
+                }
+
+                const dashedData = [
+                    { x: 0, y: 0 },
+                    { x: 173, y: parseFloat(((2.5 / 300) * 173).toFixed(2)) }
+                ];
+
+                chartInstance.data.datasets[0].data = lineData;
+                chartInstance.data.datasets[1].data = dashedData;
+            }
+
+            chartInstance.update();
+        }
+
+        function updateChartData() {
+            if (!chartInstance) return;
+
+            if (currentLaw === 'boyle') {
+                chartInstance.data.datasets[2].data = [
+                    { x: parseFloat(state.V.toFixed(2)), y: parseFloat(state.P_atm.toFixed(2)) }
+                ];
+            } else {
+                chartInstance.data.datasets[2].data = [
+                    { x: parseFloat(state.T_K.toFixed(1)), y: parseFloat(state.V.toFixed(2)) }
+                ];
+            }
+
+            chartInstance.update('none');
+        }
+
+        // --- SHARE & EXPORT LOGIC ---
+        function openShareModal() {
+            const modal = document.getElementById('shareModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            
+            // Generate QR Code dynamically for current URL
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+            const currentURL = window.location.href;
+
+            qrCodeObj = new QRCode(qrContainer, {
+                text: currentURL,
+                width: 128,
+                height: 128,
+                colorDark : "#0f172a",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        function closeShareModal() {
+            const modal = document.getElementById('shareModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function copyCurrentURL() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast("현재 주소가 클립보드에 복사되었습니다!");
+            }).catch(() => {
+                showToast("주소 복사 실패");
+            });
+        }
+
+        function downloadHTMLFile() {
+            const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "gas_laws_simulator.html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("HTML 파일 다운로드가 시작되었습니다!");
+        }
+
+        function copyDataReport() {
+            const lawName = currentLaw === 'boyle' ? "보일의 법칙" : "샤를의 법칙";
+            const report = `[이상기체 법칙 가상실험 결과 보고서]
+실험 항목: ${lawName}
+- 기체 압력(P): ${state.P_atm.toFixed(2)} atm (${state.P_kPa.toFixed(1)} kPa)
+- 기체 부피(V): ${state.V.toFixed(2)} L
+- 섭씨 온도: ${state.T_C.toFixed(2)} ℃
+- 절대 온도(T): ${state.T_K.toFixed(2)} K
+- 기체 입자 평균속도: ${Math.round(500 * state.speedFactor)} m/s`;
+
+            navigator.clipboard.writeText(report).then(() => {
+                showToast("실험 결과 보고서가 복사되었습니다!");
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('toast-animate');
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                toast.classList.remove('toast-animate');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
